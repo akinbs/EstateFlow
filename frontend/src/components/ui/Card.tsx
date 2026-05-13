@@ -1,0 +1,49 @@
+import { type HTMLAttributes } from 'react'
+import { cn } from '../../utils/cn'
+
+type DivProps = HTMLAttributes<HTMLDivElement>
+
+export function Card({ className, ...props }: DivProps) {
+  return (
+    <div
+      className={cn(
+        'rounded-2xl border border-slate-100 bg-white shadow-sm',
+        className,
+      )}
+      {...props}
+    />
+  )
+}
+
+export function CardHeader({ className, ...props }: DivProps) {
+  return (
+    <div className={cn('px-5 pt-5 pb-3', className)} {...props} />
+  )
+}
+
+export function CardTitle({ className, ...props }: HTMLAttributes<HTMLHeadingElement>) {
+  return (
+    <h3
+      className={cn('text-base font-semibold text-slate-900', className)}
+      {...props}
+    />
+  )
+}
+
+export function CardContent({ className, ...props }: DivProps) {
+  return (
+    <div className={cn('px-5 pb-4', className)} {...props} />
+  )
+}
+
+export function CardFooter({ className, ...props }: DivProps) {
+  return (
+    <div
+      className={cn(
+        'border-t border-slate-100 px-5 py-3',
+        className,
+      )}
+      {...props}
+    />
+  )
+}

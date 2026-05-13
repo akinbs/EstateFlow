@@ -1,0 +1,59 @@
+# ── Secrets & credentials ────────────────────────────────────────────────────
+# Environment files (frontend + backend)
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+.env.staging
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+backend/.env
+backend/.env.local
+backend/.env.*.local
+
+# Firebase service account / credential JSON files
+backend/serviceAccountKey.json
+backend/firebase-adminsdk*.json
+backend/*-credentials.json
+backend/*-service-account.json
+**/serviceAccountKey.json
+
+# ── Claude Code ───────────────────────────────────────────────────────────────
+.claude/
+
+# ── Python ───────────────────────────────────────────────────────────────────
+backend/venv/
+backend/.venv/
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+.Python
+backend/.pytest_cache/
+backend/.mypy_cache/
+backend/.ruff_cache/
+backend/htmlcov/
+backend/.coverage
+backend/coverage.xml
+
+# ── Node / Frontend ──────────────────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# ── IDE & editors ─────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/
