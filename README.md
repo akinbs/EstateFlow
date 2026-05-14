@@ -10,15 +10,33 @@ EstateFlow allows users to discover properties, filter listings, explore locatio
 
 ## Preview
 
-> Screenshots will be added soon.
+### Home Page
 
-| Home | Property Listing | Map View |
-|---|---|---|
-| `docs/screenshots/home.png` | `docs/screenshots/properties.png` | `docs/screenshots/map-view.png` |
+![EstateFlow Home Hero](docs/screenshots/home-hero.png)
 
-| Property Detail | Admin Dashboard | Property Form |
-|---|---|---|
-| `docs/screenshots/property-detail.png` | `docs/screenshots/admin-dashboard.png` | `docs/screenshots/property-form.png` |
+![EstateFlow Home Sections](docs/screenshots/home-sections.png)
+
+### Property Discovery
+
+![EstateFlow Property Listing](docs/screenshots/properties.png)
+
+### Property Detail
+
+![EstateFlow Property Detail Gallery](docs/screenshots/property-detail-gallery.png)
+
+![EstateFlow Property Detail Map](docs/screenshots/property-detail-map.png)
+
+### Authentication
+
+![EstateFlow Login](docs/screenshots/login.png)
+
+### Admin Panel
+
+![EstateFlow Admin Dashboard](docs/screenshots/admin-dashboard.png)
+
+![EstateFlow Admin Property List](docs/screenshots/admin-property-list.png)
+
+![EstateFlow Admin Property Form](docs/screenshots/admin-property-form.png)
 
 ---
 
@@ -598,26 +616,21 @@ Possible future improvements:
 
 ---
 
-## Screenshots To Add
+## Screenshots
 
-When screenshots are ready, add them here:
+Screenshots are stored under:
 
 ```txt
-docs/screenshots/home.png
-docs/screenshots/properties.png
-docs/screenshots/map-view.png
-docs/screenshots/property-detail.png
-docs/screenshots/admin-dashboard.png
-docs/screenshots/property-form.png
-docs/screenshots/admin-leads.png
-```
-
-Then replace the preview placeholders at the top of this README with real image links:
-
-```md
-![Home](docs/screenshots/home.png)
-![Property Listing](docs/screenshots/properties.png)
-![Map View](docs/screenshots/map-view.png)
+docs/screenshots/
+├── home-hero.png
+├── home-sections.png
+├── properties.png
+├── property-detail-gallery.png
+├── property-detail-map.png
+├── login.png
+├── admin-dashboard.png
+├── admin-property-list.png
+└── admin-property-form.png
 ```
 
 ---
@@ -631,4 +644,8 @@ Then replace the preview placeholders at the top of this README with real image 
 
 ---
 
+## License
 
+This project is currently prepared for portfolio and educational purposes.
+
+You can add a license file later depending on how you want to share or publish the project.
