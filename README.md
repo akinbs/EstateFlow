@@ -12,31 +12,31 @@ EstateFlow allows users to discover properties, filter listings, explore locatio
 
 ### Home Page
 
-![EstateFlow Home Hero](docs/screenshots/home-hero.png)
+![EstateFlow Home Hero](docs/home-hero.png)
 
-![EstateFlow Home Sections](docs/screenshots/home-sections.png)
+![EstateFlow Home Sections](docs/home-sections.png)
 
 ### Property Discovery
 
-![EstateFlow Property Listing](docs/screenshots/properties.png)
+![EstateFlow Property Listing](docs/properties.png)
 
 ### Property Detail
 
-![EstateFlow Property Detail Gallery](docs/screenshots/property-detail-gallery.png)
+![EstateFlow Property Detail Gallery](docs/property-detail-gallery.png)
 
-![EstateFlow Property Detail Map](docs/screenshots/property-detail-map.png)
+![EstateFlow Property Detail Map](docs/property-detail-map.png)
 
 ### Authentication
 
-![EstateFlow Login](docs/screenshots/login.png)
+![EstateFlow Login](docs/login.png)
 
 ### Admin Panel
 
-![EstateFlow Admin Dashboard](docs/screenshots/admin-dashboard.png)
+![EstateFlow Admin Dashboard](docs/admin-dashboard.png)
 
-![EstateFlow Admin Property List](docs/screenshots/admin-property-list.png)
+![EstateFlow Admin Property List](docs/admin-property-list.png)
 
-![EstateFlow Admin Property Form](docs/screenshots/admin-property-form.png)
+![EstateFlow Admin Property Form](docs/admin-property-form.png)
 
 ---
 
