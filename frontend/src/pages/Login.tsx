@@ -1,19 +1,41 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
-import { Building2, Mail, Eye, EyeOff, AlertCircle } from 'lucide-react'
+import { Building2, Mail, Eye, EyeOff, AlertCircle, Loader2, CheckCircle2, XCircle } from 'lucide-react'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
 import { useAuth } from '../hooks/useAuth'
+import { useAuthStore } from '../features/auth/authStore'
 import { getFirebaseAuthErrorMessage } from '../utils/firebaseError'
 
 type Mode = 'login' | 'register'
+
+interface PasswordStrength {
+  score: number
+  label: string
+  color: string
+  rules: { text: string; ok: boolean }[]
+}
+
+function getPasswordStrength(password: string): PasswordStrength {
+  const rules = [
+    { text: 'En az 8 karakter',        ok: password.length >= 8 },
+    { text: 'Büyük harf (A-Z)',         ok: /[A-Z]/.test(password) },
+    { text: 'Rakam (0-9)',              ok: /[0-9]/.test(password) },
+    { text: 'Özel karakter (!@#...)',   ok: /[^A-Za-z0-9]/.test(password) },
+  ]
+  const score = rules.filter((r) => r.ok).length
+  const labels = ['', 'Zayıf', 'Orta', 'İyi', 'Güçlü']
+  const colors = ['', 'bg-red-500', 'bg-yellow-500', 'bg-blue-500', 'bg-green-500']
+  return { score, label: password ? labels[score] : '', color: colors[score], rules }
+}
 
 export default function Login() {
   const navigate = useNavigate()
   const location = useLocation()
   const { loginWithEmail, registerWithEmail, loginWithGoogle } = useAuth()
+  const { isAuthenticated, isLoading, role } = useAuthStore()
 
-  const from = (location.state as { from?: string } | null)?.from ?? '/admin'
+  const from = (location.state as { from?: string } | null)?.from ?? null
 
   const [mode, setMode] = useState<Mode>('login')
   const [email, setEmail] = useState('')
@@ -21,7 +43,18 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+  const [isAuthenticating, setIsAuthenticating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const passwordStrength = mode === 'register' ? getPasswordStrength(password) : null
+
+  // After Firebase auth resolves, navigate based on role
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      const dest = from ?? (role === 'admin' || role === 'agent' ? '/admin' : '/')
+      navigate(dest, { replace: true })
+    }
+  }, [isAuthenticated, isLoading, role, from, navigate])
 
   const clearError = () => setError(null)
 
@@ -29,15 +62,17 @@ export default function Login() {
     e.preventDefault()
     setError(null)
     setIsSubmitting(true)
+    setIsAuthenticating(true)
     try {
       if (mode === 'login') {
         await loginWithEmail(email, password)
       } else {
         await registerWithEmail(email, password)
       }
-      navigate(from, { replace: true })
+      // navigation handled by useEffect above
     } catch (err) {
       setError(getFirebaseAuthErrorMessage(err))
+      setIsAuthenticating(false)
     } finally {
       setIsSubmitting(false)
     }
@@ -46,14 +81,29 @@ export default function Login() {
   async function handleGoogle() {
     setError(null)
     setIsGoogleLoading(true)
+    setIsAuthenticating(true)
     try {
       await loginWithGoogle()
-      navigate(from, { replace: true })
+      // navigation handled by useEffect above
     } catch (err) {
       setError(getFirebaseAuthErrorMessage(err))
+      setIsAuthenticating(false)
     } finally {
       setIsGoogleLoading(false)
     }
+  }
+
+  // Full-screen loading overlay while auth resolves
+  if (isAuthenticating && (isLoading || isAuthenticated)) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-500 shadow-lg shadow-orange-200">
+          <Building2 size={26} className="text-white" />
+        </div>
+        <Loader2 size={28} className="animate-spin text-orange-500" />
+        <p className="text-sm text-slate-500">Giriş yapılıyor…</p>
+      </div>
+    )
   }
 
   return (
@@ -122,25 +172,67 @@ export default function Login() {
               required
             />
 
-            <div className="relative">
-              <Input
-                label="Şifre"
-                type={showPassword ? 'text' : 'password'}
-                placeholder="••••••••"
-                fullWidth
-                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-3 top-8 text-slate-400 hover:text-slate-600 transition-colors"
-                tabIndex={-1}
-              >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
+            <div className="space-y-2">
+              <div className="relative">
+                <Input
+                  label="Şifre"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  fullWidth
+                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 top-8 text-slate-400 hover:text-slate-600 transition-colors"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+
+              {/* Password strength — only on register */}
+              {mode === 'register' && password && passwordStrength && (
+                <div className="space-y-2 rounded-xl border border-slate-100 bg-slate-50 p-3">
+                  {/* Strength bar */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex flex-1 gap-1">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div
+                          key={i}
+                          className={`h-1.5 flex-1 rounded-full transition-all ${
+                            i <= passwordStrength.score ? passwordStrength.color : 'bg-slate-200'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <span className={`text-xs font-medium ${
+                      passwordStrength.score <= 1 ? 'text-red-500' :
+                      passwordStrength.score === 2 ? 'text-yellow-600' :
+                      passwordStrength.score === 3 ? 'text-blue-600' : 'text-green-600'
+                    }`}>
+                      {passwordStrength.label}
+                    </span>
+                  </div>
+                  {/* Rules */}
+                  <div className="grid grid-cols-2 gap-1">
+                    {passwordStrength.rules.map((rule) => (
+                      <div key={rule.text} className="flex items-center gap-1.5">
+                        {rule.ok
+                          ? <CheckCircle2 size={12} className="shrink-0 text-green-500" />
+                          : <XCircle size={12} className="shrink-0 text-slate-300" />
+                        }
+                        <span className={`text-[11px] ${rule.ok ? 'text-slate-600' : 'text-slate-400'}`}>
+                          {rule.text}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <Button

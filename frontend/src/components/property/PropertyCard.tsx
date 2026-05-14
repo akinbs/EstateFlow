@@ -155,7 +155,7 @@ export default function PropertyCard({ property }: PropertyCardProps) {
 
         {/* Location */}
         <p className="mt-1 flex items-center gap-1 text-xs text-slate-500">
-          <MapPin size={11} className="shrink-0" />
+          <MapPin size={12} className="shrink-0" />
           <span className="truncate">
             {property.neighborhood ? `${property.neighborhood}, ` : ''}
             {property.district}, {property.city}
@@ -165,15 +165,15 @@ export default function PropertyCard({ property }: PropertyCardProps) {
         {/* Stats */}
         <div className="mt-3 flex items-center gap-4 border-t border-slate-100 pt-3 text-xs text-slate-500">
           <span className="flex items-center gap-1">
-            <BedDouble size={13} className="text-slate-400" />
+            <BedDouble size={14} className="text-slate-400" />
             {property.rooms}
           </span>
           <span className="flex items-center gap-1">
-            <Bath size={13} className="text-slate-400" />
+            <Bath size={14} className="text-slate-400" />
             {property.bathrooms}
           </span>
           <span className="flex items-center gap-1">
-            <Maximize2 size={13} className="text-slate-400" />
+            <Maximize2 size={14} className="text-slate-400" />
             {property.netArea} m²
           </span>
           {property.grossArea !== property.netArea && (

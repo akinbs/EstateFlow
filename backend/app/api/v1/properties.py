@@ -8,6 +8,8 @@ from app.schemas.property import (
     PropertyOut,
     PropertyQueryParams,
     PropertyUpdate,
+    StatusUpdate,
+    FeaturedUpdate,
 )
 from app.services import property_service
 
@@ -18,8 +20,17 @@ router = APIRouter(prefix="/properties", tags=["Properties"])
 async def list_properties(
     params: PropertyQueryParams = Depends(),
 ) -> PaginatedResponse[PropertyListItem]:
-    """Filtrelenmiş ve sayfalanmış ilan listesi."""
+    """Filtrelenmiş ve sayfalanmış ilan listesi (yalnızca aktif ilanlar)."""
     return await property_service.list_properties(params)
+
+
+@router.get("/id/{property_id}", response_model=PropertyOut)
+async def get_property_by_id(
+    property_id: str,
+    current_user: AgentOrAdminDep,
+) -> PropertyOut:
+    """ID'ye göre ilan detayı (admin/internal kullanım)."""
+    return await property_service.get_property_by_id(property_id)
 
 
 @router.get("/{slug}", response_model=PropertyOut)
@@ -47,6 +58,26 @@ async def update_property(
     return await property_service.update_property(property_id, body)
 
 
+@router.patch("/{property_id}/status", response_model=PropertyOut)
+async def update_property_status(
+    property_id: str,
+    body: StatusUpdate,
+    current_user: AgentOrAdminDep,
+) -> PropertyOut:
+    """İlan durumunu günceller. Agent veya Admin yetkisi gerekir."""
+    return await property_service.update_property_status(property_id, body.status)
+
+
+@router.patch("/{property_id}/featured", response_model=PropertyOut)
+async def update_property_featured(
+    property_id: str,
+    body: FeaturedUpdate,
+    current_user: AgentOrAdminDep,
+) -> PropertyOut:
+    """İlanın öne çıkan durumunu günceller. Agent veya Admin yetkisi gerekir."""
+    return await property_service.update_property_featured(property_id, body.featured)
+
+
 @router.delete("/{property_id}", response_model=MessageResponse)
 async def delete_property(
     property_id: str,
@@ -55,12 +86,3 @@ async def delete_property(
     """İlanı pasife çeker (soft delete). Agent veya Admin yetkisi gerekir."""
     result = await property_service.delete_property(property_id)
     return MessageResponse(message=result["message"])
-
-
-@router.get("/id/{property_id}", response_model=PropertyOut)
-async def get_property_by_id(
-    property_id: str,
-    current_user: AgentOrAdminDep,
-) -> PropertyOut:
-    """ID'ye göre ilan detayı (admin/internal kullanım)."""
-    return await property_service.get_property_by_id(property_id)

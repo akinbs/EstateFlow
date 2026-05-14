@@ -130,6 +130,16 @@ class PropertyListItem(BaseModel):
     createdAt: str | None = None
 
 
+# ── Patch payloads ─────────────────────────────────────────────────────────
+
+class StatusUpdate(BaseModel):
+    status: PropertyStatus
+
+
+class FeaturedUpdate(BaseModel):
+    featured: bool
+
+
 # ── Query params dependency ─────────────────────────────────────────────────
 
 class PropertyQueryParams:

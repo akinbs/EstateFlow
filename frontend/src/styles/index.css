@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -32,6 +33,56 @@
 
 .property-popup .leaflet-popup-tip-container {
   margin-top: -1px;
+}
+
+/* ── Hero animations ──────────────────────────────────────────────────────── */
+@keyframes hero-float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-14px); }
+}
+
+@keyframes hero-float-b {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-9px); }
+}
+
+@keyframes hero-glow {
+  0%, 100% { opacity: 0.2; }
+  50%       { opacity: 0.5; }
+}
+
+@keyframes hero-fade-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-hero-float   { animation: hero-float   6.0s ease-in-out infinite; }
+.animate-hero-float-b { animation: hero-float-b 7.5s ease-in-out infinite; }
+.animate-hero-glow    { animation: hero-glow    4.0s ease-in-out infinite; }
+
+.hero-enter-1 { animation: hero-fade-up 0.55s 0.00s ease-out both; }
+.hero-enter-2 { animation: hero-fade-up 0.55s 0.10s ease-out both; }
+.hero-enter-3 { animation: hero-fade-up 0.55s 0.20s ease-out both; }
+.hero-enter-4 { animation: hero-fade-up 0.55s 0.30s ease-out both; }
+.hero-enter-5 { animation: hero-fade-up 0.55s 0.40s ease-out both; }
+
+.hero-dot-grid {
+  background-image: radial-gradient(circle, rgba(249, 115, 22, 0.55) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-hero-float,
+  .animate-hero-float-b,
+  .animate-hero-glow {
+    animation: none;
+  }
+  .hero-enter-1, .hero-enter-2, .hero-enter-3,
+  .hero-enter-4, .hero-enter-5 {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* ── Base ─────────────────────────────────────────────────────────────────── */

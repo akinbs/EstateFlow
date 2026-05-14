@@ -1,4 +1,4 @@
-import { Navigate, Outlet } from 'react-router-dom'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { ShieldOff } from 'lucide-react'
 import { useAuthStore } from './authStore'
 import Spinner from '../../components/ui/Spinner'
@@ -17,6 +17,7 @@ export default function ProtectedRoute({
   allowedRoles,
 }: ProtectedRouteProps) {
   const { isAuthenticated, isLoading, role } = useAuthStore()
+  const location = useLocation()
 
   if (isLoading) {
     return (
@@ -27,7 +28,7 @@ export default function ProtectedRoute({
   }
 
   if (requireAuth && !isAuthenticated) {
-    return <Navigate to="/login" replace />
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />
   }
 
   if (allowedRoles && role && !allowedRoles.includes(role)) {

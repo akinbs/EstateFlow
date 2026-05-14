@@ -97,6 +97,18 @@ async def get_lead_by_id(lead_id: str) -> LeadOut:
     return _to_lead_out(doc_to_dict(doc))
 
 
+async def get_recent_leads(limit: int = 5) -> list[dict[str, Any]]:
+    """Dashboard için son lead'lerin hafif listesi."""
+    db = get_firestore_client()
+    docs = (
+        db.collection(COLLECTION)
+        .order_by("createdAt", direction="DESCENDING")
+        .limit(limit)
+        .stream()
+    )
+    return [doc_to_dict(d) for d in docs]
+
+
 async def update_lead(lead_id: str, data: LeadUpdate) -> LeadOut:
     """Lead status ve/veya notları günceller."""
     db = get_firestore_client()

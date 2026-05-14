@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import {
   Menu, X, Home, Building2, Heart, Scale,
-  LogIn, LogOut, LayoutDashboard, ChevronDown, User,
+  LogIn, LogOut, LayoutDashboard, ChevronDown,
 } from 'lucide-react'
 import { cn } from '../../utils/cn'
 import Button from '../ui/Button'
@@ -128,20 +128,12 @@ export default function Header() {
               </div>
             </>
           ) : (
-            <>
-              <Link to="/admin">
-                <Button variant="ghost" size="sm" className="gap-1.5 text-slate-500">
-                  <LayoutDashboard size={15} />
-                  Admin
-                </Button>
-              </Link>
-              <Link to="/login">
-                <Button variant="primary" size="sm" className="gap-1.5">
-                  <LogIn size={15} />
-                  Giriş Yap
-                </Button>
-              </Link>
-            </>
+            <Link to="/login">
+              <Button variant="primary" size="sm" className="gap-1.5">
+                <LogIn size={15} />
+                Giriş Yap
+              </Button>
+            </Link>
           )}
         </div>
 
@@ -210,20 +202,12 @@ export default function Header() {
                   </Button>
                 </>
               ) : (
-                <>
-                  <Link to="/admin" onClick={() => setMobileOpen(false)}>
-                    <Button variant="outline" size="sm" className="w-full gap-1.5">
-                      <User size={15} />
-                      Admin Panel
-                    </Button>
-                  </Link>
-                  <Link to="/login" onClick={() => setMobileOpen(false)}>
-                    <Button variant="primary" size="sm" className="w-full gap-1.5">
-                      <LogIn size={15} />
-                      Giriş Yap
-                    </Button>
-                  </Link>
-                </>
+                <Link to="/login" onClick={() => setMobileOpen(false)}>
+                  <Button variant="primary" size="sm" className="w-full gap-1.5">
+                    <LogIn size={15} />
+                    Giriş Yap
+                  </Button>
+                </Link>
               )}
             </div>
           </nav>

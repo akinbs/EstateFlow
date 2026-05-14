@@ -1,84 +1,67 @@
-# Firebase Security Rules — Taslak
+# Firebase Security Rules — Final Taslak
 
-> ⚠️ Bu kurallar başlangıç taslağıdır. Adım 10'da (güvenlik ve deployment) production'a alınmadan önce sıkılaştırılacaktır.
+> **Önemli:** Bu kurallar Firebase Emulator ile test edilmeden production'a uygulanmamalıdır.  
+> Backend (FastAPI + Admin SDK) Firestore security rules'u bypass eder; bu beklenen bir davranıştır.
 
 ---
 
-## Firestore Security Rules
+## Firestore Rules
 
-Firebase Console → Firestore Database → Rules sekmesine yapıştırın.
+Firebase Console → Firestore Database → Rules:
 
 ```javascript
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper: Kullanıcı kimliği doğrulanmış mı?
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // Helper: İsteği yapan kullanıcı belgenin sahibi mi?
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    // Helper: Admin custom claim kontrolü
-    // TODO (Step 10): Firebase Admin SDK ile custom claim set edildikten
-    // sonra bu kontrol gerçek anlamda çalışacak.
-    function isAdmin() {
-      return isAuthenticated() &&
-             request.auth.token.role == 'admin';
+    // Custom claim kontrolü — Admin SDK ile set edilmeli
+    function hasRole(role) {
+      return isAuthenticated() && request.auth.token.role == role;
     }
 
-    // -------------------------
-    // properties koleksiyonu
-    // -------------------------
-    // Public read: Frontend liste/detay için FastAPI'yi kullanacak.
-    // Ancak doğrudan Firestore erişimi de açık bırakılabilir (okuma için).
-    // Write: Sadece backend (Firebase Admin SDK) yapacak.
+    // ── properties ──────────────────────────────────────────────────────────
+    // Public read: herkes aktif ilanları okuyabilir
+    // Write: tamamen kapalı — tüm CRUD FastAPI Admin SDK üzerinden
     match /properties/{propertyId} {
-      allow read: if true;   // Public okuma
-
-      // Client-side write tamamen kapalı.
-      // Tüm create/update/delete işlemleri FastAPI → Admin SDK üzerinden yapılacak.
+      allow read: if resource.data.status == "active";
       allow create, update, delete: if false;
     }
 
-    // -------------------------
-    // users koleksiyonu
-    // -------------------------
-    // Kullanıcı sadece kendi dokümanını okuyup yazabilir.
+    // ── leads ────────────────────────────────────────────────────────────────
+    // Create: herkes lead oluşturabilir (contact form)
+    // Read/Update/Delete: client'tan kapalı — backend üzerinden
+    match /leads/{leadId} {
+      allow create: if request.resource.data.keys().hasAll(['propertyId', 'name', 'email', 'message'])
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() >= 2
+                    && request.resource.data.message.size() >= 10;
+      allow read, update, delete: if false;
+    }
+
+    // ── users ────────────────────────────────────────────────────────────────
     match /users/{userId} {
       allow read, write: if isOwner(userId);
     }
 
-    // -------------------------
-    // favorites koleksiyonu (subcollection)
-    // -------------------------
-    // Kullanıcı sadece kendi favorilerini yönetebilir.
-    match /favorites/{userId}/items/{itemId} {
+    // ── favorites (gelecek: Firestore'a taşınırsa) ───────────────────────────
+    match /favorites/{userId}/{propertyId} {
       allow read, write: if isOwner(userId);
     }
 
-    // -------------------------
-    // leads koleksiyonu
-    // -------------------------
-    // create: Giriş yapmış veya misafir kullanıcı talep gönderebilir.
-    // read/update/delete: Sadece admin (backend tarafından yapılacak).
-    match /leads/{leadId} {
-      allow create: if true;  // Misafir de form gönderebilir
-      allow read, update, delete: if isAdmin();
-    }
-
-    // -------------------------
-    // savedSearches koleksiyonu (subcollection)
-    // -------------------------
-    match /savedSearches/{userId}/searches/{searchId} {
+    // ── savedSearches (gelecek) ───────────────────────────────────────────────
+    match /savedSearches/{userId}/{searchId} {
       allow read, write: if isOwner(userId);
     }
 
-    // Diğer tüm koleksiyonlara erişimi kapat (varsayılan olarak deny)
+    // Varsayılan: tüm erişimi kapat
     match /{document=**} {
       allow read, write: if false;
     }
@@ -88,40 +71,39 @@ service cloud.firestore {
 
 ---
 
-## Cloud Storage Security Rules
+## Storage Rules
 
-Firebase Console → Storage → Rules sekmesine yapıştırın.
+Firebase Console → Storage → Rules:
 
 ```javascript
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
-    // -------------------------
-    // Emlak fotoğrafları
-    // -------------------------
-    match /properties/{propertyId}/{allImages=**} {
-      // Okuma herkese açık (public CDN gibi davranır)
+    match /properties/{propertyId}/{fileName} {
+      // Public read
       allow read: if true;
 
-      // Yazma: Sadece giriş yapmış kullanıcılar (şimdilik)
-      // TODO (Step 10): Sadece admin custom claim'e sahip kullanıcılara izin ver:
-      //   && request.auth.token.role == 'admin'
-      // TODO (Step 10): Dosya boyutu ve content type kontrolü ekle:
-      //   && request.resource.size < 10 * 1024 * 1024   // max 10MB
-      //   && request.resource.contentType.matches('image/.*')
-      allow write: if request.auth != null;
+      // Write: authenticated kullanıcılar; production'da role claim ekle
+      // allow write: if request.auth != null
+      //              && (request.auth.token.role == 'admin'
+      //                  || request.auth.token.role == 'agent')
+      //              && request.resource.contentType.matches('image/(jpeg|png|webp)')
+      //              && request.resource.size <= 5 * 1024 * 1024;
+      allow write: if request.auth != null
+                   && request.resource.contentType.matches('image/(jpeg|png|webp)')
+                   && request.resource.size <= 5 * 1024 * 1024;
+
+      // Delete: authenticated (production'da role claim ile kısıtla)
+      allow delete: if request.auth != null;
     }
 
-    // -------------------------
-    // Kullanıcı profil fotoğrafları
-    // -------------------------
     match /users/{userId}/{allFiles=**} {
       allow read: if true;
       allow write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Diğer her şey kapalı
+    // Varsayılan: kapat
     match /{allPaths=**} {
       allow read, write: if false;
     }
@@ -131,11 +113,29 @@ service firebase.storage {
 
 ---
 
-## Önemli Notlar
+## Production İçin Custom Claims Kurulumu
+
+Role-based write kısıtlaması için Admin SDK ile custom claim set edin:
+
+```python
+# FastAPI endpoint örneği
+from firebase_admin import auth
+auth.set_custom_user_claims(uid, {"role": "admin"})  # veya "agent"
+```
+
+Frontend'de token refresh:
+```typescript
+await user.getIdToken(true)  // force refresh — claim'ler anında yansır
+```
+
+---
+
+## Notlar
 
 | Konu | Açıklama |
 |---|---|
-| **Admin SDK** | Backend'deki Firebase Admin SDK güvenlik kurallarını bypass eder — backend güvenli olduğu sürece bu normaldir |
-| **Custom Claims** | `role: 'admin'` gibi claim'ler Firebase Admin SDK ile set edilir, Adım 4'te yapılacak |
-| **Property CRUD** | Client-side write tamamen kapalı; tüm yazma işlemleri FastAPI üzerinden Admin SDK ile yapılır |
-| **Production** | Adım 10'da rules gözden geçirilecek ve sıkılaştırılacak |
+| Admin SDK | Backend kuralları bypass eder — backend güvenli olduğu sürece doğrudur |
+| Client write | properties koleksiyonuna client-side write kapalıdır |
+| Lead create | Güvenlik açığını azaltmak için field validation kuralda yapılmaktadır |
+| Storage size | 5 MB limiti Storage rules'da enforce edilmektedir |
+| Test | Firebase Emulator Suite ile kuralları üretim öncesinde test edin |

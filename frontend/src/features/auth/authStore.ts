@@ -3,9 +3,6 @@ import type { User } from 'firebase/auth'
 import type { UserRole } from '../../types/user'
 import { subscribeToAuthChanges } from '../../services/firebase/authService'
 
-// TODO (Step 4+): Real role validation will be handled by FastAPI + Firebase Admin
-// custom claims. Currently role is derived from a simple heuristic.
-
 interface AuthState {
   firebaseUser: User | null
   isAuthenticated: boolean
@@ -18,6 +15,25 @@ interface AuthState {
   setRole: (role: UserRole | null) => void
   clearAuth: () => void
   initializeAuthListener: () => () => void
+}
+
+async function fetchRoleFromApi(token: string): Promise<UserRole> {
+  try {
+    const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api/v1'
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 5000)
+    const res = await fetch(`${base}/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: controller.signal,
+    })
+    clearTimeout(timer)
+    if (!res.ok) return 'user'
+    const data = (await res.json()) as { role?: string }
+    if (data.role === 'admin' || data.role === 'agent') return data.role
+  } catch {
+    // backend kapalı veya timeout → 'user' varsayılanı
+  }
+  return 'user'
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -50,11 +66,8 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     const unsubscribe = subscribeToAuthChanges(async (user) => {
       if (user) {
-        const token = await user.getIdToken()
-
-        // TODO (Step 4): Fetch actual role from FastAPI /auth/me endpoint
-        // using the token. For now, derive a placeholder role.
-        const role: UserRole = 'user'
+        const token = await user.getIdToken(true) // force-refresh: custom claims'i dahil et
+        const role = await fetchRoleFromApi(token)
 
         set({
           firebaseUser: user,

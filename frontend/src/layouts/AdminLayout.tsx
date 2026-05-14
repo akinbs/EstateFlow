@@ -1,33 +1,68 @@
+import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
-import { Bell, User } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import Sidebar from '../components/layout/Sidebar'
+import { useAuthStore } from '../features/auth/authStore'
 
 export default function AdminLayout() {
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const { firebaseUser } = useAuthStore()
+
+  const displayName = firebaseUser?.displayName ?? firebaseUser?.email ?? 'Admin'
+  const initial = displayName[0]?.toUpperCase() ?? 'A'
+
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50">
-      {/* Sidebar */}
-      <Sidebar />
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-20 bg-black/40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
-      {/* Main */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Admin top bar */}
-        <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-6">
-          <p className="text-sm text-slate-500">
-            <span className="font-medium text-slate-800">EstateFlow</span> Admin Paneli
-          </p>
+      {/* Sidebar — always visible on desktop, overlay on mobile */}
+      <div
+        className={`fixed inset-y-0 left-0 z-30 transition-transform duration-200 lg:static lg:translate-x-0 ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <Sidebar onClose={() => setSidebarOpen(false)} />
+      </div>
+
+      {/* Main area */}
+      <div className="flex flex-1 min-w-0 flex-col overflow-hidden">
+        {/* Top bar */}
+        <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-6">
+          {/* Left: hamburger (mobile) + breadcrumb */}
           <div className="flex items-center gap-3">
-            <button className="relative rounded-lg p-2 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors">
-              <Bell size={18} />
-              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-orange-500" />
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="rounded-lg p-2 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors lg:hidden"
+              aria-label="Menüyü aç"
+            >
+              <Menu size={18} />
             </button>
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-slate-600">
-              <User size={16} />
+            <p className="text-sm text-slate-500 hidden sm:block">
+              <span className="font-medium text-slate-800">EstateFlow</span> Admin
+            </p>
+          </div>
+
+          {/* Right: user info */}
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:block text-right">
+              <p className="text-xs font-medium text-slate-800 truncate max-w-[180px]">
+                {displayName}
+              </p>
+            </div>
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-100 text-sm font-bold text-orange-600">
+              {initial}
             </div>
           </div>
         </header>
 
-        {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-6">
+        {/* Content */}
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6">
           <Outlet />
         </main>
       </div>

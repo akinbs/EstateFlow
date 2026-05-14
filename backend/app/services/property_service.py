@@ -91,48 +91,31 @@ async def list_properties(
     """
     Filtrelenmiş ve sayfalanmış ilan listesi döndürür.
 
-    Firestore query stratejisi:
-    - status filtresi Firestore sorguya uygulanır (index gerekir)
-    - Ek filtreler (listingType, city vb.) Firestore'da veya bellekte uygulanır
-    - TODO: Production için compound index'ler oluşturulmalı (bkz: docs/firestore-indexes.md)
-    - TODO: Büyük koleksiyonlar için cursor-based pagination veya counter kullanılmalı
+    include_non_active=True olduğunda (admin mode):
+    - params.status yoksa tüm statüsler gösterilir
+    - params.status varsa o statüse göre filtrelenir ("all" ise hepsi)
     """
     db = get_firestore_client()
-    ref = db.collection(COLLECTION)
 
-    # ── Firestore katmanı filtreleri ─────────────────────────────────────
-    # Status filtresi — en seçici filtre, mutlaka Firestore'da uygula
+    # Tüm filtreleme Python tarafında — Firestore compound query / composite
+    # index sorunundan tamamen kaçınmak için salt koleksiyon okuma kullanılır.
+    _FETCH_LIMIT = 500
+    raw = db.collection(COLLECTION).limit(_FETCH_LIMIT).stream()
+    all_docs = [doc_to_dict(d) for d in raw]
+
+    # Status filtresi
     if not include_non_active:
         target_status = params.status if params.status else "active"
-        ref = ref.where("status", "==", target_status)
+        all_docs = [d for d in all_docs if d.get("status") == target_status]
+    else:
+        if params.status and params.status != "all":
+            all_docs = [d for d in all_docs if d.get("status") == params.status]
 
-    # listingType — yüksek seçicilik, Firestore'da uygula
-    # TODO: (status, listingType, createdAt) composite index gerekir
     if params.listingType:
-        ref = ref.where("listingType", "==", params.listingType)
+        all_docs = [d for d in all_docs if d.get("listingType") == params.listingType]
 
-    # featured — basit boolean filtre
     if params.featured is not None:
-        ref = ref.where("featured", "==", params.featured)
-
-    # Sıralama — Firestore index ile
-    if params.sortBy == "price_asc":
-        ref = ref.order_by("price")
-    elif params.sortBy == "price_desc":
-        ref = ref.order_by("price", direction="DESCENDING")
-    elif params.sortBy == "date_asc":
-        ref = ref.order_by("createdAt")
-    else:  # date_desc
-        ref = ref.order_by("createdAt", direction="DESCENDING")
-
-    # Büyük veri setlerinde performans için makul üst limit
-    # TODO: Production'da cursor-based pagination kullanılmalı
-    _FETCH_LIMIT = 500
-    docs = ref.limit(_FETCH_LIMIT).stream()
-    all_docs = [doc_to_dict(d) for d in docs]
-
-    # ── Bellek filtresi — Firestore index gerekmeden ─────────────────────
-    # TODO: Aşağıdaki filtreler production'da Firestore compound query'e taşınmalı
+        all_docs = [d for d in all_docs if d.get("featured") == params.featured]
 
     if params.city:
         all_docs = [d for d in all_docs if d.get("city", "").lower() == params.city.lower()]
@@ -155,7 +138,16 @@ async def list_properties(
     if params.rooms:
         all_docs = [d for d in all_docs if d.get("rooms") in params.rooms]
 
-    # ── Sayfalama ─────────────────────────────────────────────────────────
+    # Python-side sorting
+    if params.sortBy == "price_asc":
+        all_docs.sort(key=lambda d: float(d.get("price", 0)))
+    elif params.sortBy == "price_desc":
+        all_docs.sort(key=lambda d: float(d.get("price", 0)), reverse=True)
+    elif params.sortBy == "date_asc":
+        all_docs.sort(key=lambda d: str(d.get("createdAt", "")))
+    else:
+        all_docs.sort(key=lambda d: str(d.get("createdAt", "")), reverse=True)
+
     total = len(all_docs)
     start = (params.page - 1) * params.limit
     page_docs = all_docs[start : start + params.limit]
@@ -169,12 +161,12 @@ async def list_properties(
 
 
 async def get_property_by_slug(slug: str) -> PropertyOut:
-    """Slug'a göre aktif ilan döndürür. Bulunamazsa 404."""
+    """Slug'a göre ilan döndürür. Bulunamazsa 404."""
     db = get_firestore_client()
+    # Tek equality filter — composite index gerektirmez.
     docs = (
         db.collection(COLLECTION)
         .where("slug", "==", slug)
-        .where("status", "==", "active")
         .limit(1)
         .stream()
     )
@@ -203,7 +195,6 @@ async def create_property(data: PropertyCreate, owner_id: str | None = None) -> 
     """Yeni ilan oluşturur. Slug otomatik üretilir ya da verileni kullanır."""
     db = get_firestore_client()
 
-    # Slug üretimi / uniqueness kontrolü
     base_slug = slugify(data.slug or data.title)
     existing = {
         d.get("slug", "")
@@ -239,8 +230,6 @@ async def update_property(property_id: str, data: PropertyUpdate) -> PropertyOut
             detail=f"Property '{property_id}' not found.",
         )
 
-    # TODO: title değişirse slug güncelleme politikasını belirle
-    # (Mevcut bağlantıları bozmamak için slug değiştirmemek daha güvenlidir)
     update_data = clean_none_values(data.model_dump(exclude_none=True))
     update_data["updatedAt"] = now_utc()
     doc_ref.update(update_data)
@@ -248,11 +237,34 @@ async def update_property(property_id: str, data: PropertyUpdate) -> PropertyOut
     return await get_property_by_id(property_id)
 
 
+async def update_property_status(property_id: str, new_status: str) -> PropertyOut:
+    """Sadece status alanını günceller."""
+    db = get_firestore_client()
+    doc_ref = db.collection(COLLECTION).document(property_id)
+    if not doc_ref.get().exists:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Property '{property_id}' not found.",
+        )
+    doc_ref.update({"status": new_status, "updatedAt": now_utc()})
+    return await get_property_by_id(property_id)
+
+
+async def update_property_featured(property_id: str, featured: bool) -> PropertyOut:
+    """Sadece featured alanını günceller."""
+    db = get_firestore_client()
+    doc_ref = db.collection(COLLECTION).document(property_id)
+    if not doc_ref.get().exists:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Property '{property_id}' not found.",
+        )
+    doc_ref.update({"featured": featured, "updatedAt": now_utc()})
+    return await get_property_by_id(property_id)
+
+
 async def delete_property(property_id: str) -> dict[str, str]:
-    """
-    Soft delete — gerçek silme yerine status='passive' yapar.
-    Gerçek silme gerekirse require_admin kontrolünden sonra ayrı endpoint kullanılmalı.
-    """
+    """Soft delete — status='passive' yapar."""
     db = get_firestore_client()
     doc_ref = db.collection(COLLECTION).document(property_id)
     if not doc_ref.get().exists:
@@ -264,22 +276,22 @@ async def delete_property(property_id: str) -> dict[str, str]:
     return {"message": f"Property '{property_id}' deactivated successfully."}
 
 
-async def get_stats() -> dict[str, int]:
+async def get_stats() -> dict[str, Any]:
     """Admin dashboard için Firestore koleksiyon sayımları."""
     db = get_firestore_client()
-    # TODO: Production'da Firestore aggregation queries veya distributed counters kullan
-    # Şu an tüm dokümanları çekip sayıyoruz — küçük koleksiyonlar için yeterli
     all_props = list(db.collection(COLLECTION).stream())
     all_leads = list(db.collection("leads").stream())
 
     active = sum(1 for d in all_props if (d.to_dict() or {}).get("status") == "active")
     passive = sum(1 for d in all_props if (d.to_dict() or {}).get("status") == "passive")
+    featured = sum(1 for d in all_props if (d.to_dict() or {}).get("featured") is True)
     new_leads = sum(1 for d in all_leads if (d.to_dict() or {}).get("status") == "new")
 
     return {
         "totalProperties": len(all_props),
         "activeProperties": active,
         "passiveProperties": passive,
+        "featuredProperties": featured,
         "totalLeads": len(all_leads),
         "newLeads": new_leads,
     }

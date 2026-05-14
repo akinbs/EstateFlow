@@ -54,15 +54,19 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     except auth.InvalidIdTokenError as exc:
+        from app.core.config import get_settings
+        detail = f"Invalid token: {exc}" if get_settings().is_development else "Invalid token."
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid token: {exc}",
+            detail=detail,
             headers={"WWW-Authenticate": "Bearer"},
         )
     except Exception as exc:
+        from app.core.config import get_settings
+        detail = f"Token verification failed: {exc}" if get_settings().is_development else "Token verification failed."
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Token verification failed: {exc}",
+            detail=detail,
             headers={"WWW-Authenticate": "Bearer"},
         )
 

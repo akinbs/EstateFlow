@@ -8,7 +8,54 @@ from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 
+
+def _patch_google_api_core_list_response() -> None:
+    """
+    google-api-core bazı Firestore REST hata yanıtlarını (liste formatı) parse
+    edemez ve AttributeError fırlatır.  Bu patch listeyi dict'e dönüştürür ve
+    gerçek Firestore hata mesajını loglar.
+    """
+    import google.api_core.exceptions as _gae
+
+    if getattr(_gae, "_estateflow_patched", False):
+        return
+
+    _orig = _gae.from_http_response
+
+    def _patched(response):
+        try:
+            payload = response.json()
+            if isinstance(payload, list) and payload:
+                inner = payload[0] if isinstance(payload[0], dict) else {}
+                err = inner.get("error", {})
+                if isinstance(err, dict):
+                    logger.error(
+                        "[Firestore] HTTP %s error: code=%s status=%s message=%s",
+                        getattr(response, "status_code", "?"),
+                        err.get("code"), err.get("status"), err.get("message"),
+                    )
+                # Rebuild a minimal fake response with dict body so _orig works
+                import json as _json
+
+                class _Wrap:
+                    status_code = getattr(response, "status_code", 400)
+                    headers = getattr(response, "headers", {})
+                    content = _json.dumps(inner).encode()
+
+                    def json(self_):
+                        return inner
+
+                return _orig(_Wrap())
+        except Exception:
+            pass
+        return _orig(response)
+
+    _gae.from_http_response = _patched
+    _gae._estateflow_patched = True
+    logger.info("[EstateFlow] google-api-core list-response patch uygulandı.")
+
 _firebase_app: App | None = None
+_fs_client: FirestoreClient | None = None
 
 
 def initialize_firebase() -> App | None:
@@ -63,9 +110,34 @@ def initialize_firebase() -> App | None:
 
 
 def get_firestore_client() -> FirestoreClient:
-    """Firestore client döndür. Uygulama initialize olmadıysa RuntimeError fırlatır."""
+    """Firestore client — REST transport (Windows SSL uyumluluğu, gRPC yok)."""
+    _patch_google_api_core_list_response()
+    global _fs_client
+    if _fs_client is not None:
+        return _fs_client
+
+    from google.cloud import firestore as gc_firestore
+    from google.cloud.firestore_v1.services.firestore import FirestoreClient as _GapicClient
+    from google.cloud.firestore_v1.services.firestore.transports.rest import (
+        FirestoreRestTransport,
+    )
+
     app = _firebase_app or firebase_admin.get_app()
-    return firestore.client(app)
+    settings = get_settings()
+    google_cred = app.credential.get_credential()
+
+    rest_transport = FirestoreRestTransport(
+        credentials=google_cred,
+        host="firestore.googleapis.com",
+    )
+    _fs_client = gc_firestore.Client(
+        project=settings.firebase_project_id,
+        credentials=google_cred,
+    )
+    _fs_client._firestore_api_internal = _GapicClient(transport=rest_transport)
+
+    logger.info("[EstateFlow] Firestore REST transport aktif.")
+    return _fs_client
 
 
 def get_auth_client() -> auth.Client:
@@ -75,11 +147,7 @@ def get_auth_client() -> auth.Client:
 
 
 def get_storage_bucket():
-    """
-    Firebase Storage bucket döndür.
-    Gerçek upload işlemi Adım 9'da implement edilecek.
-    """
-    # TODO (Step 9): Implement image upload via Firebase Storage
+    """Firebase Storage bucket döndür. Upload client SDK üzerinden yapılır."""
     app = _firebase_app or firebase_admin.get_app()
     return storage.bucket(app=app)
 

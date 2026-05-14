@@ -138,6 +138,33 @@ export interface PropertyCreatePayload {
 /** Payload for PUT /properties/:id — all optional */
 export type PropertyUpdatePayload = Partial<PropertyCreatePayload>
 
+/** Form state for PropertyForm — all numeric/coord fields kept as strings for input binding */
+export interface PropertyFormValues {
+  title: string
+  description: string
+  listingType: ListingType
+  propertyType: PropertyType
+  price: string
+  currency: Currency
+  city: string
+  district: string
+  neighborhood: string
+  addressText: string
+  lat: string
+  lng: string
+  rooms: string
+  bathrooms: string
+  grossArea: string
+  netArea: string
+  buildingAge: string
+  floor: string
+  totalFloors: string
+  heating: string
+  furnished: boolean
+  status: PropertyStatus
+  featured: boolean
+}
+
 /**
  * Lightweight snapshot stored in compareStore (localStorage).
  * Detail fields (buildingAge etc.) are optional because the snapshot may come

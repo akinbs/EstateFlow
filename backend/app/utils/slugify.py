@@ -4,7 +4,7 @@ import unicodedata
 
 _TR_MAP = str.maketrans(
     "çğıİöşüÇĞÖŞÜ",
-    "cgiiiosuCGOSU",
+    "cgiIosuCGOSU",
 )
 
 

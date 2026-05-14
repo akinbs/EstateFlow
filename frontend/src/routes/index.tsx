@@ -31,10 +31,8 @@ const router = createBrowserRouter([
     ],
   },
   {
-    // Admin routes — protected, require authentication
-    // TODO (Step 4+): Add allowedRoles={['admin', 'agent']} once real roles
-    // are returned from FastAPI /auth/me endpoint.
-    element: <ProtectedRoute requireAuth={true} />,
+    // Admin routes — roles enforced by ProtectedRoute (UI) + FastAPI require_admin/require_agent_or_admin (API)
+    element: <ProtectedRoute requireAuth={true} allowedRoles={['admin', 'agent']} />,
     children: [
       {
         element: <AdminLayout />,

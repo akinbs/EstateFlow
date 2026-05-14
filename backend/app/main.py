@@ -1,6 +1,27 @@
 import logging
+import os
+import ssl
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
+
+# Windows SSL uyumluluğu: sertifika doğrulamasını devre dışı bırak (dev only)
+ssl._create_default_https_context = ssl._create_unverified_context
+try:
+    import urllib3
+    urllib3.disable_warnings()
+    import requests as _req
+    _orig_sess = _req.Session.__init__
+    def _patch_sess(self, *a, **kw):
+        _orig_sess(self, *a, **kw)
+        self.verify = False
+    _req.Session.__init__ = _patch_sess
+except Exception:
+    pass
+try:
+    import truststore
+    truststore.inject_into_ssl()
+except Exception:
+    pass
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -48,20 +69,19 @@ def create_app() -> FastAPI:
             "Authentication: **Firebase Auth (Bearer token)**"
         ),
         lifespan=lifespan,
-        docs_url="/docs",
-        redoc_url="/redoc",
-        openapi_url="/openapi.json",
+        docs_url="/docs" if settings.is_development else None,
+        redoc_url="/redoc" if settings.is_development else None,
+        openapi_url="/openapi.json" if settings.is_development else None,
     )
 
     # ── CORS ────────────────────────────────────────────────────────────────
-    # TODO (Step 10 / Production): allow_origins listesini kısıtla,
-    # allow_methods ve allow_headers'ı daralt.
+    allowed_origins = [o.strip() for o in settings.frontend_url.split(",") if o.strip()]
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[settings.frontend_url],
+        allow_origins=allowed_origins,
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "Accept"],
     )
 
     # ── Global exception handler ─────────────────────────────────────────
