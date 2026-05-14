@@ -643,9 +643,3 @@ docs/screenshots/
 - Email: akinbas2002@gmail.com
 
 ---
-
-## License
-
-This project is currently prepared for portfolio and educational purposes.
-
-You can add a license file later depending on how you want to share or publish the project.
